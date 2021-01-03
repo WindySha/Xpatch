@@ -3,6 +3,7 @@ package com.storm.wind.xpatch.task;
 import com.storm.wind.xpatch.util.FileUtils;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -11,10 +12,8 @@ import java.util.HashMap;
 public class SoAndDexCopyTask implements Runnable {
 
     private static final String SANDHOOK_SO_FILE_NAME = "libsandhook";
+    private static final String SANDHOOK_NATIVE_SO_FILE_NAME = "libsandhook-native";
     private static final String WHALE_SO_FILE_NAME = "libwhale";
-
-    private static final String SANDHOOK_SO_FILE_NAME_WITH_SUFFIX = "libsandhook.so";
-    private static final String WHALE_SO_FILE_NAME_WITH_SUFFIX = "libwhale.so";
 
     private static final String XPOSED_MODULE_FILE_NAME_PREFIX = "libxpatch_xp_module_";
     private static final String SO_FILE_SUFFIX = ".so";
@@ -25,7 +24,7 @@ public class SoAndDexCopyTask implements Runnable {
             "lib/arm64-v8a/"
     };
 
-    private final HashMap<String, String> mSoFilePathMap = new HashMap<>();
+    private final HashMap<String, ArrayList<String>> mSoFilesPathMap = new HashMap<>();
     private int dexFileCount;
     private String unzipApkFilePath;
     private String[] xposedModuleArray;
@@ -39,16 +38,18 @@ public class SoAndDexCopyTask implements Runnable {
         this.xposedModuleArray = xposedModuleArray;
         this.useWhaleHookFramework = useWhaleHookFramework;
 
-        String soFileName;
+        String[] soFileNames;
         if (useWhaleHookFramework) {
-            soFileName = WHALE_SO_FILE_NAME;
+            soFileNames = new String[]{WHALE_SO_FILE_NAME};
         } else {
-            soFileName = SANDHOOK_SO_FILE_NAME;
+            soFileNames = new String[]{SANDHOOK_SO_FILE_NAME, SANDHOOK_NATIVE_SO_FILE_NAME};
         }
 
-        mSoFilePathMap.put(APK_LIB_PATH_ARRAY[0], "assets/lib/armeabi-v7a/" + soFileName);
-        mSoFilePathMap.put(APK_LIB_PATH_ARRAY[1], "assets/lib/armeabi-v7a/" + soFileName);
-        mSoFilePathMap.put(APK_LIB_PATH_ARRAY[2], "assets/lib/arm64-v8a/" + soFileName);
+        for(String soFileName: soFileNames) {
+            mSoFilesPathMap.computeIfAbsent(APK_LIB_PATH_ARRAY[0], (key)-> new ArrayList<>()).add("assets/lib/armeabi-v7a/" + soFileName);
+            mSoFilesPathMap.computeIfAbsent(APK_LIB_PATH_ARRAY[1], (key)-> new ArrayList<>()).add("assets/lib/armeabi-v7a/" + soFileName);
+            mSoFilesPathMap.computeIfAbsent(APK_LIB_PATH_ARRAY[2], (key)-> new ArrayList<>()).add("assets/lib/arm64-v8a/" + soFileName);
+        }
     }
 
     @Override
@@ -85,7 +86,10 @@ public class SoAndDexCopyTask implements Runnable {
         for (String libPath : existLibPathArray) {
             if (libPath != null && !libPath.isEmpty()) {
                 String apkSoFullPath = fullLibPath(libPath);
-                copyLibFile(apkSoFullPath, mSoFilePathMap.get(libPath));
+                for(String soPath: mSoFilesPathMap.get(libPath)) {
+                    System.out.println(soPath);
+                    copyLibFile(apkSoFullPath, soPath);
+                }
             }
         }
 
@@ -140,12 +144,7 @@ public class SoAndDexCopyTask implements Runnable {
         // get the file name first
         // int lastIndex = srcSoPath.lastIndexOf('/');
         // int length = srcSoPath.length();
-        String soFileName;
-        if (useWhaleHookFramework) {
-            soFileName = WHALE_SO_FILE_NAME_WITH_SUFFIX;
-        } else {
-            soFileName = SANDHOOK_SO_FILE_NAME_WITH_SUFFIX;
-        }
+        String soFileName = new File(srcSoPath).getName() + SO_FILE_SUFFIX;
 
         // do copy
         FileUtils.copyFileFromJar(srcSoPath, new File(apkSoParentFile, soFileName).getAbsolutePath());
