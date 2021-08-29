@@ -3,7 +3,6 @@ package com.storm.wind.xpatch.task;
 import com.android.apksigner.ApkSignerTool;
 import com.storm.wind.xpatch.util.FileUtils;
 import com.storm.wind.xpatch.util.ShellCmdUtil;
-
 import java.io.File;
 import java.util.ArrayList;
 
@@ -18,10 +17,13 @@ public class BuildAndSignApkTask implements Runnable {
 
     private String unzipApkFilePath;
 
-    public BuildAndSignApkTask(boolean keepUnsignedApkFile, String unzipApkFilePath, String signedApkPath) {
+    private String originalApkFilePath;
+
+    public BuildAndSignApkTask(boolean keepUnsignedApkFile, String unzipApkFilePath, String signedApkPath, String originalApkFilePath) {
         this.keepUnsignedApkFile = keepUnsignedApkFile;
         this.unzipApkFilePath = unzipApkFilePath;
         this.signedApkPath = signedApkPath;
+        this.originalApkFilePath = originalApkFilePath;
     }
 
     @Override
@@ -31,7 +33,7 @@ public class BuildAndSignApkTask implements Runnable {
 
         // 将文件压缩到当前apk文件的上一级目录上
         String unsignedApkPath = unzipApkFile.getParent() + File.separator + "unsigned.apk";
-        FileUtils.compressToZip(unzipApkFilePath, unsignedApkPath);
+        FileUtils.compressToZip(unzipApkFilePath, unsignedApkPath, originalApkFilePath);
 
         // 将签名文件复制从assets目录下复制出来
         String keyStoreFilePath = unzipApkFile.getParent() + File.separator + "keystore";
@@ -39,7 +41,7 @@ public class BuildAndSignApkTask implements Runnable {
         File keyStoreFile = new File(keyStoreFilePath);
         // assets/keystore分隔符不能使用File.separator，否则在windows上抛出IOException !!!
         String keyStoreAssetPath;
-        if (isAndroid()) {
+        if (ShellCmdUtil.isAndroid()) {
             // BKS-V1 类型
             keyStoreAssetPath = "assets/android.keystore";
         } else {
@@ -49,13 +51,26 @@ public class BuildAndSignApkTask implements Runnable {
 
         FileUtils.copyFileFromJar(keyStoreAssetPath, keyStoreFilePath);
 
-        boolean signResult = signApk(unsignedApkPath, keyStoreFilePath, signedApkPath);
+        String unsignedZipalignedApkPath = unzipApkFile.getParent() + File.separator + "unsigned_zipaligned.apk";
+        zipalignApk(unsignedApkPath, unsignedZipalignedApkPath);
+
+        boolean signResult = signApk(unsignedZipalignedApkPath, keyStoreFilePath, signedApkPath);
 
         File unsignedApkFile = new File(unsignedApkPath);
         File signedApkFile = new File(signedApkPath);
         // delete unsigned apk file
         if (!keepUnsignedApkFile && unsignedApkFile.exists() && signedApkFile.exists() && signResult) {
             unsignedApkFile.delete();
+        }
+
+        File unsign_zipaligned_file = new File(unsignedZipalignedApkPath);
+        if (!keepUnsignedApkFile && unsign_zipaligned_file.exists() && signedApkFile.exists() && signResult) {
+            unsign_zipaligned_file.delete();
+        }
+
+        File idsigFile = new File(signedApkPath + ".idsig");
+        if (idsigFile.exists()) {
+            idsigFile.delete();
         }
 
         // delete the keystore file
@@ -65,10 +80,14 @@ public class BuildAndSignApkTask implements Runnable {
     }
 
     private boolean signApk(String apkPath, String keyStorePath, String signedApkPath) {
+        String apkParentPath = (new File(apkPath)).getParent();
+
+        System.out.println(" apkParentPath  :" + apkParentPath);
+        ShellCmdUtil.chmodNoException(apkParentPath, ShellCmdUtil.FileMode.MODE_755);
         if (signApkUsingAndroidApksigner(apkPath, keyStorePath, signedApkPath, "123456")) {
             return true;
         }
-        if (isAndroid()) {
+        if (ShellCmdUtil.isAndroid()) {
             System.out.println(" Sign apk failed, please sign it yourself.");
             return false;
         }
@@ -103,16 +122,6 @@ public class BuildAndSignApkTask implements Runnable {
         }
     }
 
-    private boolean isAndroid() {
-        boolean isAndroid = true;
-        try {
-            Class.forName("android.content.Context");
-        } catch (ClassNotFoundException e) {
-            isAndroid = false;
-        }
-        return isAndroid;
-    }
-
     // 使用Android build-tools里自带的apksigner工具进行签名
     private boolean signApkUsingAndroidApksigner(String apkPath, String keyStorePath, String signedApkPath, String keyStorePassword) {
         ArrayList<String> commandList = new ArrayList<>();
@@ -131,9 +140,9 @@ public class BuildAndSignApkTask implements Runnable {
         commandList.add("--v1-signing-enabled");
         commandList.add("true");
         commandList.add("--v2-signing-enabled");   // v2签名不兼容android 6
-        commandList.add("false");
+        commandList.add("true");
         commandList.add("--v3-signing-enabled");   // v3签名不兼容android 6
-        commandList.add("false");
+        commandList.add("true");
         commandList.add(apkPath);
 
         int size = commandList.size();
@@ -147,5 +156,32 @@ public class BuildAndSignApkTask implements Runnable {
             return false;
         }
         return true;
+    }
+
+    private void zipalignApk(String inputApkPath, String outputApkPath) {
+        long time = System.currentTimeMillis();
+        String zipalignPath = (new File(inputApkPath)).getParent() + File.separator + "zipalign";
+        FileUtils.copyFileFromJar("assets/zipalign", zipalignPath);
+        ShellCmdUtil.chmodNoException(zipalignPath, ShellCmdUtil.FileMode.MODE_755);
+        StringBuilder signCmd = new StringBuilder(zipalignPath + " ");
+
+        signCmd.append(" -f ")
+                .append(" -p ")
+                .append(" 4 ")
+                .append(" " + inputApkPath + " ")
+                .append(" " + outputApkPath + " ");
+        System.out.println("\n" + signCmd + "\n");
+        String result = null;
+        try {
+            result = ShellCmdUtil.execCmd(signCmd.toString(), null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        File zipalignFile = new File(zipalignPath);
+        if (zipalignFile.exists()) {
+            zipalignFile.delete();
+        }
+        System.out.println(" zipalign apk time is :" + ((System.currentTimeMillis() - time)) +
+                "s\n\n" + "  result=" + result);
     }
 }

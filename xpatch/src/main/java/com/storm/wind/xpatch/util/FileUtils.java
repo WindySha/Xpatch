@@ -6,6 +6,7 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,6 +20,7 @@ import java.util.zip.CRC32;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -166,7 +168,7 @@ public class FileUtils {
         file.delete();
     }
 
-    public static void compressToZip(String srcPath, String dstPath) {
+    public static void compressToZip(String srcPath, String dstPath, String originZipPath) {
         File srcFile = new File(srcPath);
         File dstFile = new File(dstPath);
         if (!srcFile.exists()) {
@@ -181,7 +183,7 @@ public class FileUtils {
             CheckedOutputStream cos = new CheckedOutputStream(out, new CRC32());
             zipOut = new ZipOutputStream(cos);
             String baseDir = "";
-            compress(srcFile, zipOut, baseDir, true);
+            compress(srcFile, zipOut, baseDir, true, originZipPath);
         } catch (IOException e) {
             System.out.println(" compress exception = " + e.getMessage());
         } finally {
@@ -197,18 +199,18 @@ public class FileUtils {
         }
     }
 
-    private static void compress(File file, ZipOutputStream zipOut, String baseDir, boolean isRootDir) throws IOException {
+    private static void compress(File file, ZipOutputStream zipOut, String baseDir, boolean isRootDir, String originZipPath) throws IOException {
         if (file.isDirectory()) {
-            compressDirectory(file, zipOut, baseDir, isRootDir);
+            compressDirectory(file, zipOut, baseDir, isRootDir, originZipPath);
         } else {
-            compressFile(file, zipOut, baseDir);
+            compressFile(file, zipOut, baseDir, originZipPath);
         }
     }
 
     /**
      * 压缩一个目录
      */
-    private static void compressDirectory(File dir, ZipOutputStream zipOut, String baseDir, boolean isRootDir) throws IOException {
+    private static void compressDirectory(File dir, ZipOutputStream zipOut, String baseDir, boolean isRootDir, String originZipPath) throws IOException {
         File[] files = dir.listFiles();
         if (files == null) {
             return;
@@ -218,14 +220,14 @@ public class FileUtils {
             if (!isRootDir) {
                 compressBaseDir = baseDir + dir.getName() + "/";
             }
-            compress(files[i], zipOut, compressBaseDir, false);
+            compress(files[i], zipOut, compressBaseDir, false, originZipPath);
         }
     }
 
     /**
      * 压缩一个文件
      */
-    private static void compressFile(File file, ZipOutputStream zipOut, String baseDir) throws IOException {
+    private static void compressFile(File file, ZipOutputStream zipOut, String baseDir, String originZipPath) throws IOException {
         if (!file.exists()) {
             return;
         }
@@ -234,6 +236,16 @@ public class FileUtils {
         try {
             bis = new BufferedInputStream(new FileInputStream(file));
             ZipEntry entry = new ZipEntry(baseDir + file.getName());
+            if (file.getName().contains("resources.arsc")) {
+                ZipEntry originEntry = getZipEntryFromZipFile(originZipPath, file.getName());
+                System.out.println(" file name : " + file.getName() + " originEntry = " + originEntry);
+                if (originEntry != null) {
+                    entry.setMethod(ZipEntry.STORED);
+                    entry.setSize(originEntry.getSize());
+                    entry.setCompressedSize(originEntry.getCompressedSize());
+                    entry.setCrc(originEntry.getCrc());
+                }
+            }
             zipOut.putNextEntry(entry);
             int count;
             byte data[] = new byte[BUFFER];
@@ -246,6 +258,33 @@ public class FileUtils {
                 bis.close();
             }
         }
+    }
+
+    private static ZipEntry getZipEntryFromZipFile(String zipPath, String fileName) {
+        ZipInputStream zin = null;
+        try {
+            zin = new ZipInputStream(new FileInputStream(zipPath));
+
+            ZipEntry entry = zin.getNextEntry();
+            while (entry != null) {
+                String name = entry.getName();
+                if (name.equals(fileName)) {
+                    return entry;
+                }
+                entry = zin.getNextEntry();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (zin != null) {
+                try {
+                    zin.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return null;
     }
 
     public static void writeFile(String filePath, String content) {

@@ -23,7 +23,11 @@ subprojects {
 //    artifacts.archives packageSources
 
     repositories {
+        google()
         mavenCentral()
+        jcenter()
+
+        maven { url "https://jitpack.io" }
     }
 
     [compileJava, compileTestJava]*.options.collect {options ->options.encoding = 'UTF-8'}
