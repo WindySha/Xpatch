@@ -1,25 +1,45 @@
-apply plugin: 'java-library'
+plugins {
+    id 'java-library'
+}
+
+compileJava.options.encoding = "UTF-8"
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
-jar{
-    baseName = "xpatch"
+jar {
+    baseName = 'xpatch'
+    version = '4.1'
     manifest {
         attributes 'Main-Class': 'com.storm.wind.xpatch.MainCommand'
     }
+    destinationDirectory = new File("$rootProject.projectDir/out")
     //添加将引用的jar的源码打入最终的jar
+    dependsOn configurations.runtimeClasspath
     from {
-        (configurations.runtime).collect {
+        configurations.runtimeClasspath.collect {
             it.isDirectory() ? it : zipTree(it)
         }
     }
 
-    from fileTree(dir:'src/main', includes: ['assets/**'])
+    from fileTree(dir: 'src/main', includes: ['assets/**'])
 
     //排除引用的jar中的签名信息
-    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF'
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF', 'META-INF/*.txt', "META-INF/versions/**"
+
+    manifest {
+        attributes("Implementation-Title": baseName,
+                "Implementation-Version": version,
+                "Build-Time": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                "Build-Number": System.env.BUILD_NUMBER ? System.env.BUILD_NUMBER : "-1",
+        )
+    }
+    from(project.parent.projectDir) {
+        include 'NOTICE.txt'
+        include 'LICENSE.txt'
+        into('META-INF')
+    }
 }
 
 //添加源码中引入的非代码文件，例如资源等
