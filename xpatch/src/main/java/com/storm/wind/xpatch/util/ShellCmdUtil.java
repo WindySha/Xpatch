@@ -67,7 +67,9 @@ public class ShellCmdUtil {
     }
 
     public static void chmod(String path, int mode) throws Exception {
-        chmodOnAndroid(path, mode);
+        if (isAndroid()) {
+            chmodOnAndroid(path, mode);
+        }
 
         File file = new File(path);
         String cmd = "chmod ";
@@ -97,6 +99,16 @@ public class ShellCmdUtil {
                 // nothing
             }
         }
+    }
+
+    public static boolean isAndroid() {
+        boolean isAndroid = true;
+        try {
+            Class.forName("android.content.Context");
+        } catch (ClassNotFoundException e) {
+            isAndroid = false;
+        }
+        return isAndroid;
     }
 
     public interface FileMode {

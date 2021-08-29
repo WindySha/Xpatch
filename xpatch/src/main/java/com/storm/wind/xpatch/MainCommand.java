@@ -213,7 +213,7 @@ public class MainCommand extends BaseCommand {
                 getXposedModules(xposedModules), useWhaleHookFramework));
 
         //  compress all files into an apk and then sign it.
-        mXpatchTasks.add(new BuildAndSignApkTask(keepBuildFiles, unzipApkFilePath, output));
+        mXpatchTasks.add(new BuildAndSignApkTask(keepBuildFiles, unzipApkFilePath, output, apkPath));
 
         // excute these tasks
         for (Runnable executor : mXpatchTasks) {

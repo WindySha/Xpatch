@@ -1,3 +1,4 @@
+/*
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 allprojects  {
     apply plugin: 'maven'
@@ -23,7 +24,11 @@ subprojects {
 //    artifacts.archives packageSources
 
     repositories {
+        google()
         mavenCentral()
+        jcenter()
+
+        maven { url "https://jitpack.io" }
     }
 
     [compileJava, compileTestJava]*.options.collect {options ->options.encoding = 'UTF-8'}
@@ -46,4 +51,22 @@ subprojects {
             into('META-INF')
         }
     }
+}
+*/
+
+
+
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.0.1'
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }

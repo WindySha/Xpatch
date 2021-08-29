@@ -1,33 +1,82 @@
-apply plugin: 'java-library'
+//apply plugin: 'java-library'
+//
+//dependencies {
+//    compile fileTree(dir: 'libs', include: ['*.jar'])
+//    implementation project(':axmlprinter')
+////    compile project(':apksigner')
+//
+//    implementation 'androidx.annotation:annotation:1.2.0'
+//    implementation 'com.github.MuntashirAkon:zipalign-android:1.0'
+//}
+//
+//jar{
+//    baseName = "xpatch"
+//    manifest {
+//        attributes 'Main-Class': 'com.storm.wind.xpatch.MainCommand'
+//    }
+//    //添加将引用的jar的源码打入最终的jar
+//    from {
+//        (configurations.runtime).collect {
+//            it.isDirectory() ? it : zipTree(it)
+//        }
+//    }
+//
+//    from fileTree(dir:'src/main', includes: ['assets/**'])
+//
+//    //排除引用的jar中的签名信息
+//    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF'
+//}
+//
+////添加源码中引入的非代码文件，例如资源等
+//sourceSets.main.resources {
+//    srcDirs = [
+//            "src/main/java",
+//    ];
+//    include "**/*.*"
+//}
 
-dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':axmlprinter')
-    compile project(':apksigner')
+
+
+
+plugins {
+    id 'com.android.library'
 }
 
-jar{
-    baseName = "xpatch"
-    manifest {
-        attributes 'Main-Class': 'com.storm.wind.xpatch.MainCommand'
-    }
-    //添加将引用的jar的源码打入最终的jar
-    from {
-        (configurations.runtime).collect {
-            it.isDirectory() ? it : zipTree(it)
+android {
+    compileSdk 30
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        minSdk 14
+        targetSdk 30
+
+        consumerProguardFiles "consumer-rules.pro"
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+                arguments '-DANDROID_STL=c++_shared'
+            }
+        }
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
         }
     }
 
-    from fileTree(dir:'src/main', includes: ['assets/**'])
-
-    //排除引用的jar中的签名信息
-    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF'
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
-//添加源码中引入的非代码文件，例如资源等
-sourceSets.main.resources {
-    srcDirs = [
-            "src/main/java",
-    ];
-    include "**/*.*"
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation project(':axmlprinter')
+    implementation 'androidx.annotation:annotation:1.2.0'
+    implementation 'com.github.MuntashirAkon:zipalign-android:1.0'
 }
