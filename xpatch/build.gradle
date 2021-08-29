@@ -72,11 +72,13 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    lintOptions {
+        abortOnError false
+    }
 }
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation project(':axmlprinter')
     implementation 'androidx.annotation:annotation:1.2.0'
     implementation 'com.github.MuntashirAkon:zipalign-android:1.0'
 }
