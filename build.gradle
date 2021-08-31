@@ -10,29 +10,6 @@ buildscript {
     }
 }
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-defaultTasks('clean','distZip')
-
-subprojects {
-    apply plugin: 'java'
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-
-    repositories {
-        google()
-        mavenCentral()
-        jcenter()
-    }
-
-    [compileJava, compileTestJava]*.options.collect {options ->options.encoding = 'UTF-8'}
-}
-
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

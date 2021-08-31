@@ -49,3 +49,6 @@ sourceSets.main.resources {
     ];
     include "**/*.*"
 }
+
+assemble.dependsOn(':loader:copyLoaderFiles')
+build.dependsOn(':loader:copyLoaderFiles')

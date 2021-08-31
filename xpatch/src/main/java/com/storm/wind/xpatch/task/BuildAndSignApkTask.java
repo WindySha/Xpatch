@@ -52,9 +52,19 @@ public class BuildAndSignApkTask implements Runnable {
         FileUtils.copyFileFromJar(keyStoreAssetPath, keyStoreFilePath);
 
         String unsignedZipalignedApkPath = unzipApkFile.getParent() + File.separator + "unsigned_zipaligned.apk";
-        zipalignApk(unsignedApkPath, unsignedZipalignedApkPath);
+        try {
+            zipalignApk(unsignedApkPath, unsignedZipalignedApkPath);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-        boolean signResult = signApk(unsignedZipalignedApkPath, keyStoreFilePath, signedApkPath);
+        String apkPath = unsignedZipalignedApkPath;
+        if (!(new File(apkPath).exists())) {
+            apkPath = unsignedApkPath;
+            System.out.println(" zipalign apk failed, just sign not zipaligned apk !!!");
+        }
+
+        boolean signResult = signApk(apkPath, keyStoreFilePath, signedApkPath);
 
         File unsignedApkFile = new File(unsignedApkPath);
         File signedApkFile = new File(signedApkPath);
@@ -160,8 +170,16 @@ public class BuildAndSignApkTask implements Runnable {
 
     private void zipalignApk(String inputApkPath, String outputApkPath) {
         long time = System.currentTimeMillis();
+
+        String os = System.getProperty("os.name");
+        String zipalignAssetPath = "assets/zipalign";
+        if (os.toLowerCase().startsWith("win")) {
+            System.out.println(" The running os is " + os);
+            zipalignAssetPath = "assets/win/zipalign.exe";
+        }
+
         String zipalignPath = (new File(inputApkPath)).getParent() + File.separator + "zipalign";
-        FileUtils.copyFileFromJar("assets/zipalign", zipalignPath);
+        FileUtils.copyFileFromJar(zipalignAssetPath, zipalignPath);
         ShellCmdUtil.chmodNoException(zipalignPath, ShellCmdUtil.FileMode.MODE_755);
         StringBuilder signCmd = new StringBuilder(zipalignPath + " ");
 
