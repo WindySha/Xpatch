@@ -240,35 +240,30 @@ public class MainCommand extends BaseCommand {
 
     private void modifyManifestFile(String filePath, String dstFilePath, String originalApplicationName) {
         ModificationProperty property = new ModificationProperty();
-        boolean modifyEnabled = false;
         if (isNotEmpty(newPackageName)) {
-            modifyEnabled = true;
             property.addManifestAttribute(new AttributeItem(NodeValue.Manifest.PACKAGE, newPackageName).setNamespace(null));
         }
 
         if (versionCode > 0) {
-            modifyEnabled = true;
             property.addManifestAttribute(new AttributeItem(NodeValue.Manifest.VERSION_CODE, versionCode));
         }
 
         if (isNotEmpty(versionName)) {
-            modifyEnabled = true;
             property.addManifestAttribute(new AttributeItem(NodeValue.Manifest.VERSION_NAME, versionName));
         }
 
         if (debuggable >= 0) {
-            modifyEnabled = true;
             property.addApplicationAttribute(new AttributeItem(NodeValue.Application.DEBUGGABLE, debuggable != 0));
         }
 
         if (!dexModificationMode || !isNotEmpty(originalApplicationName)) {
-            modifyEnabled = true;
             property.addApplicationAttribute(new AttributeItem(NodeValue.Application.NAME, PROXY_APPLICATION_NAME));
         }
 
-        if (modifyEnabled) {
-            FileProcesser.processManifestFile(filePath, dstFilePath, property);
-        }
+        // Android 11, needs this permission
+        property.addUsesPermission("android.permission.QUERY_ALL_PACKAGES");
+
+        FileProcesser.processManifestFile(filePath, dstFilePath, property);
     }
 
     private int findDexFileCount(String unzipApkFilePath) {
