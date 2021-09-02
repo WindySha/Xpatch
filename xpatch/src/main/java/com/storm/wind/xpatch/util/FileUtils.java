@@ -240,10 +240,15 @@ public class FileUtils {
                 ZipEntry originEntry = getZipEntryFromZipFile(originZipPath, file.getName());
                 System.out.println(" file name : " + file.getName() + " originEntry = " + originEntry);
                 if (originEntry != null) {
-                    entry.setMethod(ZipEntry.STORED);
-                    entry.setSize(originEntry.getSize());
-                    entry.setCompressedSize(originEntry.getCompressedSize());
-                    entry.setCrc(originEntry.getCrc());
+                    long size = originEntry.getSize();
+                    long comrepssSize = originEntry.getCompressedSize();
+                    System.out.println(" originEntry = " + originEntry + " size = " + size + " comrepssSize = " + comrepssSize);
+                    if (size == comrepssSize) {
+                        entry.setMethod(ZipEntry.STORED);
+                        entry.setSize(originEntry.getSize());
+                        entry.setCompressedSize(originEntry.getCompressedSize());
+                        entry.setCrc(originEntry.getCrc());
+                    }
                 }
             }
             zipOut.putNextEntry(entry);
