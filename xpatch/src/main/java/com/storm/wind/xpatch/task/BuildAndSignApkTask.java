@@ -33,7 +33,7 @@ public class BuildAndSignApkTask implements Runnable {
 
         // 将文件压缩到当前apk文件的上一级目录上
         String unsignedApkPath = unzipApkFile.getParent() + File.separator + "unsigned.apk";
-        FileUtils.compressToZip(unzipApkFilePath, unsignedApkPath, originalApkFilePath);
+        FileUtils.compressToZip(unzipApkFilePath, unsignedApkPath);
 
         // 将签名文件复制从assets目录下复制出来
         String keyStoreFilePath = unzipApkFile.getParent() + File.separator + "keystore";
