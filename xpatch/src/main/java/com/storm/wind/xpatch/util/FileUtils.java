@@ -15,8 +15,10 @@ import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -29,6 +31,17 @@ import java.util.zip.ZipOutputStream;
 public class FileUtils {
 
     static final int BUFFER = 8192;
+
+    // from : http://androidxref.com/9.0.0_r3/xref/frameworks/base/tools/aapt/Package.cpp#30
+    static final String[] kNoCompressExt = {
+            ".jpg", ".jpeg", ".png", ".gif",
+            ".wav", ".mp2", ".mp3", ".ogg", ".aac",
+            ".mpg", ".mpeg", ".mid", ".midi", ".smf", ".jet",
+            ".rtttl", ".imy", ".xmf", ".mp4", ".m4a",
+            ".m4v", ".3gp", ".3gpp", ".3g2", ".3gpp2",
+            ".amr", ".awb", ".wma", ".wmv",
+            ".tflite", ".lite"
+    };
 
     /**
      * 解压文件
@@ -168,7 +181,7 @@ public class FileUtils {
         file.delete();
     }
 
-    public static void compressToZip(String srcPath, String dstPath, String originZipPath) {
+    public static void compressToZip(String srcPath, String dstPath) {
         File srcFile = new File(srcPath);
         File dstFile = new File(dstPath);
         if (!srcFile.exists()) {
@@ -183,7 +196,7 @@ public class FileUtils {
             CheckedOutputStream cos = new CheckedOutputStream(out, new CRC32());
             zipOut = new ZipOutputStream(cos);
             String baseDir = "";
-            compress(srcFile, zipOut, baseDir, true, originZipPath);
+            compress(srcFile, zipOut, baseDir, true);
         } catch (IOException e) {
             System.out.println(" compress exception = " + e.getMessage());
         } finally {
@@ -199,18 +212,18 @@ public class FileUtils {
         }
     }
 
-    private static void compress(File file, ZipOutputStream zipOut, String baseDir, boolean isRootDir, String originZipPath) throws IOException {
+    private static void compress(File file, ZipOutputStream zipOut, String baseDir, boolean isRootDir) throws IOException {
         if (file.isDirectory()) {
-            compressDirectory(file, zipOut, baseDir, isRootDir, originZipPath);
+            compressDirectory(file, zipOut, baseDir, isRootDir);
         } else {
-            compressFile(file, zipOut, baseDir, originZipPath);
+            compressFile(file, zipOut, baseDir);
         }
     }
 
     /**
      * 压缩一个目录
      */
-    private static void compressDirectory(File dir, ZipOutputStream zipOut, String baseDir, boolean isRootDir, String originZipPath) throws IOException {
+    private static void compressDirectory(File dir, ZipOutputStream zipOut, String baseDir, boolean isRootDir) throws IOException {
         File[] files = dir.listFiles();
         if (files == null) {
             return;
@@ -220,14 +233,14 @@ public class FileUtils {
             if (!isRootDir) {
                 compressBaseDir = baseDir + dir.getName() + "/";
             }
-            compress(files[i], zipOut, compressBaseDir, false, originZipPath);
+            compress(files[i], zipOut, compressBaseDir, false);
         }
     }
 
     /**
      * 压缩一个文件
      */
-    private static void compressFile(File file, ZipOutputStream zipOut, String baseDir, String originZipPath) throws IOException {
+    private static void compressFile(File file, ZipOutputStream zipOut, String baseDir) throws IOException {
         if (!file.exists()) {
             return;
         }
@@ -236,20 +249,23 @@ public class FileUtils {
         try {
             bis = new BufferedInputStream(new FileInputStream(file));
             ZipEntry entry = new ZipEntry(baseDir + file.getName());
-            if (file.getName().contains("resources.arsc")) {
-                ZipEntry originEntry = getZipEntryFromZipFile(originZipPath, file.getName());
-                System.out.println(" file name : " + file.getName() + " originEntry = " + originEntry);
-                if (originEntry != null) {
-                    long size = originEntry.getSize();
-                    long comrepssSize = originEntry.getCompressedSize();
-                    System.out.println(" originEntry = " + originEntry + " size = " + size + " comrepssSize = " + comrepssSize);
-                    if (size == comrepssSize) {
-                        entry.setMethod(ZipEntry.STORED);
-                        entry.setSize(originEntry.getSize());
-                        entry.setCompressedSize(originEntry.getCompressedSize());
-                        entry.setCrc(originEntry.getCrc());
+            String fileName = file.getName();
+            boolean isNoCompressFileFormat = false;
+            int index = fileName.lastIndexOf(".");
+            if (index >= 0) {
+                String suffix = fileName.substring(index);
+                for (String s : kNoCompressExt) {
+                    if (s.equalsIgnoreCase(suffix)) {
+                        isNoCompressFileFormat = true;
+                        break;
                     }
                 }
+            }
+            if (fileName.equals("resources.arsc") || isNoCompressFileFormat) {
+                entry.setMethod(ZipEntry.STORED);
+                entry.setSize(file.length());
+                long crc = calFileCRC32(file);
+                entry.setCrc(crc);
             }
             zipOut.putNextEntry(entry);
             int count;
@@ -263,6 +279,17 @@ public class FileUtils {
                 bis.close();
             }
         }
+    }
+
+    public static long calFileCRC32(File file) throws IOException {
+        FileInputStream fi = new FileInputStream(file);
+        CheckedInputStream checksum = new CheckedInputStream(fi, new CRC32());
+        while (checksum.read() != -1) {
+        }
+        long temp = checksum.getChecksum().getValue();
+        fi.close();
+        checksum.close();
+        return temp;
     }
 
     private static ZipEntry getZipEntryFromZipFile(String zipPath, String fileName) {
