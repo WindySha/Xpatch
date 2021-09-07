@@ -4,6 +4,7 @@ import com.storm.wind.xpatch.base.BaseCommand;
 import com.storm.wind.xpatch.task.ApkModifyTask;
 import com.storm.wind.xpatch.task.BuildAndSignApkTask;
 import com.storm.wind.xpatch.task.SaveApkSignatureTask;
+import com.storm.wind.xpatch.task.SaveOriginalApkTask;
 import com.storm.wind.xpatch.task.SaveOriginalApplicationNameTask;
 import com.storm.wind.xpatch.task.SoAndDexCopyTask;
 import com.storm.wind.xpatch.util.FileUtils;
@@ -16,6 +17,7 @@ import com.wind.meditor.utils.NodeValue;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -69,6 +71,12 @@ public class MainCommand extends BaseCommand {
 
     @Opt(opt = "w", longOpt = "whale", hasArg = false, description = "Change hook framework to Lody's whale")
     private boolean useWhaleHookFramework = false;   // 是否使用whale hook框架，默认使用的是SandHook
+
+    @Opt(opt = "hap", longOpt = "hookApkPath", hasArg = false, description = "Hook the apk installled path, " +
+            "original apk will be replaced in the apk installed path, " +
+            "to bypass apk completeness check. " +
+            "This will pack original apk into the new apk and the size will be twice of original one.")
+    private boolean hookInstalledApkPath = false;  // 是否hook apk安装路径，使得绕过app对apk的校验
 
     // 原来apk中dex文件的数量
     private int dexFileCount = 0;
@@ -208,9 +216,24 @@ public class MainCommand extends BaseCommand {
                     dexFileCount));
         }
 
+        String[] userInsertModule = getXposedModules(xposedModules);
+        List<String> xposedModuleList = new ArrayList<>();
+
+        if (hookInstalledApkPath) {
+            mXpatchTasks.add(new SaveOriginalApkTask(apkPath, unzipApkFilePath));
+
+            // Load the xposed module that hook the apk installed path
+            String dstXposedModulePath = (unzipApkFilePath + SaveOriginalApkTask.XPOSED_MODULE_ASSET_PATH).replace("/", File.separator);
+            xposedModuleList.add(dstXposedModulePath);
+        }
+
+        if (userInsertModule != null && userInsertModule.length > 0) {
+            xposedModuleList.addAll(Arrays.asList(userInsertModule));
+        }
+
         //  copy xposed so and dex files into the unzipped apk
-        mXpatchTasks.add(new SoAndDexCopyTask(dexFileCount, unzipApkFilePath,
-                getXposedModules(xposedModules), useWhaleHookFramework));
+        mXpatchTasks.add(new SoAndDexCopyTask(dexFileCount, unzipApkFilePath, xposedModuleList.toArray(new String[0])
+                , useWhaleHookFramework));
 
         //  compress all files into an apk and then sign it.
         mXpatchTasks.add(new BuildAndSignApkTask(keepBuildFiles, unzipApkFilePath, output, apkPath));
