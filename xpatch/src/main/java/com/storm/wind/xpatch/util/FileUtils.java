@@ -15,8 +15,10 @@ import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -29,6 +31,17 @@ import java.util.zip.ZipOutputStream;
 public class FileUtils {
 
     static final int BUFFER = 8192;
+
+    // from : http://androidxref.com/9.0.0_r3/xref/frameworks/base/tools/aapt/Package.cpp#30
+    static final String[] kNoCompressExt = {
+            ".jpg", ".jpeg", ".png", ".gif",
+            ".wav", ".mp2", ".mp3", ".ogg", ".aac",
+            ".mpg", ".mpeg", ".mid", ".midi", ".smf", ".jet",
+            ".rtttl", ".imy", ".xmf", ".mp4", ".m4a",
+            ".m4v", ".3gp", ".3gpp", ".3g2", ".3gpp2",
+            ".amr", ".awb", ".wma", ".wmv",
+            ".tflite", ".lite"
+    };
 
     /**
      * 解压文件
@@ -236,15 +249,23 @@ public class FileUtils {
         try {
             bis = new BufferedInputStream(new FileInputStream(file));
             ZipEntry entry = new ZipEntry(baseDir + file.getName());
-            if (file.getName().contains("resources.arsc")) {
-                ZipEntry originEntry = getZipEntryFromZipFile(originZipPath, file.getName());
-                System.out.println(" file name : " + file.getName() + " originEntry = " + originEntry);
-                if (originEntry != null) {
-                    entry.setMethod(ZipEntry.STORED);
-                    entry.setSize(originEntry.getSize());
-                    entry.setCompressedSize(originEntry.getCompressedSize());
-                    entry.setCrc(originEntry.getCrc());
+            String fileName = file.getName();
+            boolean isNoCompressFileFormat = false;
+            int index = fileName.lastIndexOf(".");
+            if (index >= 0) {
+                String suffix = fileName.substring(index);
+                for (String s : kNoCompressExt) {
+                    if (s.equalsIgnoreCase(suffix)) {
+                        isNoCompressFileFormat = true;
+                        break;
+                    }
                 }
+            }
+            if (fileName.equals("resources.arsc") || isNoCompressFileFormat) {
+                entry.setMethod(ZipEntry.STORED);
+                entry.setSize(file.length());
+                long crc = calFileCRC32(file);
+                entry.setCrc(crc);
             }
             zipOut.putNextEntry(entry);
             int count;
@@ -258,6 +279,17 @@ public class FileUtils {
                 bis.close();
             }
         }
+    }
+
+    public static long calFileCRC32(File file) throws IOException {
+        FileInputStream fi = new FileInputStream(file);
+        CheckedInputStream checksum = new CheckedInputStream(fi, new CRC32());
+        while (checksum.read() != -1) {
+        }
+        long temp = checksum.getChecksum().getValue();
+        fi.close();
+        checksum.close();
+        return temp;
     }
 
     private static ZipEntry getZipEntryFromZipFile(String zipPath, String fileName) {

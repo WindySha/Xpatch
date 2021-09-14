@@ -1,42 +1,3 @@
-//apply plugin: 'java-library'
-//
-//dependencies {
-//    compile fileTree(dir: 'libs', include: ['*.jar'])
-//    implementation project(':axmlprinter')
-////    compile project(':apksigner')
-//
-//    implementation 'androidx.annotation:annotation:1.2.0'
-//    implementation 'com.github.MuntashirAkon:zipalign-android:1.0'
-//}
-//
-//jar{
-//    baseName = "xpatch"
-//    manifest {
-//        attributes 'Main-Class': 'com.storm.wind.xpatch.MainCommand'
-//    }
-//    //添加将引用的jar的源码打入最终的jar
-//    from {
-//        (configurations.runtime).collect {
-//            it.isDirectory() ? it : zipTree(it)
-//        }
-//    }
-//
-//    from fileTree(dir:'src/main', includes: ['assets/**'])
-//
-//    //排除引用的jar中的签名信息
-//    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF'
-//}
-//
-////添加源码中引入的非代码文件，例如资源等
-//sourceSets.main.resources {
-//    srcDirs = [
-//            "src/main/java",
-//    ];
-//    include "**/*.*"
-//}
-
-
-
 
 plugins {
     id 'com.android.library'
@@ -82,3 +43,59 @@ dependencies {
     implementation 'androidx.annotation:annotation:1.2.0'
     implementation 'com.github.MuntashirAkon:zipalign-android:1.0'
 }
+
+
+//plugins {
+//    id 'java-library'
+//}
+//
+//compileJava.options.encoding = "UTF-8"
+//
+//dependencies {
+//    implementation fileTree(dir: 'libs', include: ['*.jar'])
+//}
+//
+//jar {
+//    baseName = 'xpatch'
+//    version = '4.3'
+//    manifest {
+//        attributes 'Main-Class': 'com.storm.wind.xpatch.MainCommand'
+//    }
+//    destinationDirectory = new File("$rootProject.projectDir/out")
+//    //添加将引用的jar的源码打入最终的jar
+//    dependsOn configurations.runtimeClasspath
+//    from {
+//        configurations.runtimeClasspath.collect {
+//            it.isDirectory() ? it : zipTree(it)
+//        }
+//    }
+//
+//    from fileTree(dir: 'src/main', includes: ['assets/**'])
+//
+//    //排除引用的jar中的签名信息
+//    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF', 'META-INF/*.txt', "META-INF/versions/**"
+//
+//    manifest {
+//        attributes("Implementation-Title": baseName,
+//                "Implementation-Version": version,
+//                "Build-Time": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+//                "Build-Number": System.env.BUILD_NUMBER ? System.env.BUILD_NUMBER : "-1",
+//        )
+//    }
+//    from(project.parent.projectDir) {
+//        include 'NOTICE.txt'
+//        include 'LICENSE.txt'
+//        into('META-INF')
+//    }
+//}
+//
+////添加源码中引入的非代码文件，例如资源等
+//sourceSets.main.resources {
+//    srcDirs = [
+//            "src/main/java",
+//    ];
+//    include "**/*.*"
+//}
+//
+//assemble.dependsOn(':loader:copyLoaderFiles')
+//build.dependsOn(':loader:copyLoaderFiles')

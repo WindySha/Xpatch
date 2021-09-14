@@ -1,0 +1,77 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    compileSdk 30
+    buildToolsVersion "30.0.0"
+
+    defaultConfig {
+        applicationId "com.storm.wind.xposed"
+        minSdkVersion 21
+        targetSdkVersion 30
+        versionCode 3
+        versionName "3.0"
+
+        multiDexEnabled false
+
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+    buildTypes {
+        debug {
+            debuggable true
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        release {
+            debuggable false
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "${variant.getName()}-${variant.versionName}.apk"
+        }
+    }
+}
+
+task "copyDebugDex"(type: Copy) {
+    outputs.upToDateWhen { false }  // do not UP-TO_DATE
+    dependsOn("assembleDebug")
+    from "$buildDir/intermediates/dex/debug/mergeDexDebug/classes.dex"
+    rename "(.*).dex", "classes.dex"
+    into "$rootProject.projectDir/xpatch/src/main/assets/dex/sandhook"
+}
+
+task "copyDebugSo"(type: Copy) {
+    outputs.upToDateWhen { false }  // do not UP-TO_DATE
+    dependsOn("assembleDebug")
+    from "$buildDir/intermediates/merged_native_libs/debug/out/lib"
+    rename '(.*).so', '$1'
+    into "$rootProject.projectDir/xpatch/src/main/assets/lib"
+}
+
+task "copyLoaderFiles"() {
+    outputs.upToDateWhen { false }
+    dependsOn("copyDebugSo")
+    dependsOn("copyDebugDex")
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+    implementation 'com.jakewharton.android.repackaged:dalvik-dx:9.0.0_r3'
+    implementation 'me.weishu:free_reflection:3.0.1'
+}
