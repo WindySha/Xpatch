@@ -10,6 +10,7 @@ android {
     defaultConfig {
         minSdk 14
         targetSdk 30
+        version 4.3
 
         consumerProguardFiles "consumer-rules.pro"
         externalNativeBuild {
@@ -37,6 +38,9 @@ android {
         abortOnError false
     }
 }
+
+assemble.dependsOn(':loader:copyLoaderFiles')
+build.dependsOn(':loader:copyLoaderFiles')
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
