@@ -87,12 +87,12 @@ public class BuildAndSignApkTask implements Runnable {
         if (keyStoreFile.exists()) {
             keyStoreFile.delete();
         }
+        System.out.println(" out put apk  :" + signedApkPath);
     }
 
     private boolean signApk(String apkPath, String keyStorePath, String signedApkPath) {
         String apkParentPath = (new File(apkPath)).getParent();
 
-        System.out.println(" apkParentPath  :" + apkParentPath);
         ShellCmdUtil.chmodNoException(apkParentPath, ShellCmdUtil.FileMode.MODE_755);
         if (signApkUsingAndroidApksigner(apkPath, keyStorePath, signedApkPath, "123456")) {
             return true;
