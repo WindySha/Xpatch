@@ -17,6 +17,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
@@ -42,6 +43,12 @@ public class FileUtils {
             ".amr", ".awb", ".wma", ".wmv",
             ".tflite", ".lite"
     };
+    private static final String APPEND_PREFIX_FORMAT = "#$&(";
+    private static final String APPEND_SUBFIX_FORMAT = ")&$#";
+
+    private static final HashSet<String> ResFileNameSet = new HashSet<>();
+    private static final String RES_PATH_CONST = "res" + File.separator;
+
 
     /**
      * 解压文件
@@ -52,6 +59,7 @@ public class FileUtils {
      */
     @SuppressWarnings("rawtypes")
     public static boolean decompressZip(String zipPath, String descDir) {
+        ResFileNameSet.clear();
         File zipFile = new File(zipPath);
         boolean flag = false;
         if (!descDir.endsWith(File.separator)) {
@@ -88,6 +96,17 @@ public class FileUtils {
                 if (new File(outPath).isDirectory()) {
                     continue;
                 }
+
+                // 处理res/aaa.xml资源名称忽略大小写出现重复的问题, 比如 youtube app, 漫画人app等等
+                if (zipEntryName.startsWith(RES_PATH_CONST) && zipEntryName.split(File.separator).length == 2) {
+                    String fileName = zipEntryName.split(File.separator)[1];
+                    fileName = getNotContainedFileName(fileName, ResFileNameSet);
+                    ResFileNameSet.add(fileName.toLowerCase());
+
+                    zipEntryName = RES_PATH_CONST + fileName;
+                    outPath = (descDir + zipEntryName).replace("/", File.separator);
+                }
+
                 //保存文件路径信息（可利用md5.zip名称的唯一性，来判断是否已经解压）
 //                System.err.println("当前zip解压之后的路径为：" + outPath);
                 OutputStream out = new FileOutputStream(outPath);
@@ -105,6 +124,33 @@ public class FileUtils {
             e.printStackTrace();
         }
         return flag;
+    }
+
+    private static String getNotContainedFileName(String fileName, HashSet<String> set) {
+        StringBuilder name = new StringBuilder(fileName);
+        if (set.contains(name.toString().toLowerCase())) {
+            for (int i = 1; i < 100; i++) {
+                name.insert(0, APPEND_SUBFIX_FORMAT);
+                name.insert(0, i);
+                name.insert(0, APPEND_PREFIX_FORMAT);
+                if (!set.contains(name.toString().toLowerCase())) {
+                    return name.toString();
+                }
+            }
+        } else {
+            return name.toString();
+        }
+        return name.toString();
+    }
+
+    private static String removeFileNamePrefix(String fileName) {
+        String lastPrefix = APPEND_PREFIX_FORMAT + "1" + APPEND_SUBFIX_FORMAT;
+        int index = fileName.lastIndexOf(lastPrefix);
+        if (index >= 0) {
+            return fileName.substring(index + lastPrefix.length());
+        } else {
+            return fileName;
+        }
     }
 
     private static InputStream getInputStreamFromFile(String filePath) {
@@ -248,8 +294,11 @@ public class FileUtils {
         BufferedInputStream bis = null;
         try {
             bis = new BufferedInputStream(new FileInputStream(file));
-            ZipEntry entry = new ZipEntry(baseDir + file.getName());
             String fileName = file.getName();
+            if (baseDir.equals(RES_PATH_CONST)) {   // 处理res/目录下，文件名称忽略大小写出现重复的问题
+                fileName = removeFileNamePrefix(fileName);
+            }
+            ZipEntry entry = new ZipEntry(baseDir + fileName);
             boolean isNoCompressFileFormat = false;
             int index = fileName.lastIndexOf(".");
             if (index >= 0) {
@@ -357,5 +406,4 @@ public class FileUtils {
             io.printStackTrace();
         }
     }
-
 }
