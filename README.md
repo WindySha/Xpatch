@@ -95,7 +95,6 @@ com.blanke.mdwechat#MDWechat
 
  - [MDWechat][8]
  - [文本自定义][9]
- - [RemoveVideoAdsPlugin](https://github.com/WindySha/RemoveVideoAdsPlugin)
  - **你自己编写的Xposed模块**
 
 
