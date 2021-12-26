@@ -11,10 +11,15 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.wind.xposed.entry.util.FileUtils;
+import com.wind.xposed.entry.util.NativeLibraryHelperCompat;
 import com.wind.xposed.entry.util.PackageNameCache;
+import com.wind.xposed.entry.util.PluginNativeLibExtractor;
 import com.wind.xposed.entry.util.SharedPrefUtils;
+import com.wind.xposed.entry.util.VMRuntime;
 import com.wind.xposed.entry.util.XLog;
 import com.wind.xposed.entry.util.XpatchUtils;
+
+import org.lsposed.hiddenapibypass.HiddenApiBypass;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -31,7 +36,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.robv.android.xposed.XposedHelper;
-import me.weishu.reflection.Reflection;
 
 /**
  * Created by Wind
@@ -55,8 +59,11 @@ public class XposedModuleEntry {
             return;
         }
 
+//        VMRuntime.setHiddenApiExemptions(new String[]{"L"});
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            HiddenApiBypass.addHiddenApiExemptions("");
+        }
         Context context = XpatchUtils.createAppContext();
-        Reflection.unseal(context);
         SandHookInitialization.init(context);
         init(context);
     }
@@ -118,11 +125,29 @@ public class XposedModuleEntry {
             }
         }
 
+        String appPrivateDir = context.getFilesDir().getParentFile().getAbsolutePath();
         for (String modulePath : modulePathList) {
             String dexPath = context.getDir("xposed_plugin_dex", Context.MODE_PRIVATE).getAbsolutePath();
             if (!TextUtils.isEmpty(modulePath)) {
-                Log.d(TAG, "Current truely loaded module path ----> " + modulePath);
-                XposedModuleLoader.loadModule(modulePath, dexPath, null, context.getApplicationInfo(), originClassLoader);
+                String packageName = getPackageNameByPath(context, modulePath);
+                Log.d(TAG, "Current truely loaded module path ----> " + modulePath + " packageName: " + packageName);
+                String pathNameSuffix = packageName;
+                if (pathNameSuffix == null || pathNameSuffix.isEmpty()) {
+                    pathNameSuffix = XpatchUtils.strMd5(modulePath);
+                }
+
+                String xposedPluginFilePath = appPrivateDir + "/xpatch_plugin_native_lib/plugin_" + pathNameSuffix;
+
+                String soFilePath;
+                if (NativeLibraryHelperCompat.is64bit()) {
+                    soFilePath = xposedPluginFilePath + "/lib/arm64";
+                } else {
+                    soFilePath = xposedPluginFilePath + "/lib/arm";
+                }
+                // 将插件apk中的so文件释放到soFilePath目录下
+                PluginNativeLibExtractor.copySoFileIfNeeded(context, soFilePath, modulePath);
+
+                XposedModuleLoader.loadModule(modulePath, dexPath, soFilePath, context.getApplicationInfo(), originClassLoader);
             }
         }
     }

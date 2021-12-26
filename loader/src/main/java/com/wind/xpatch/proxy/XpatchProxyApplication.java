@@ -2,6 +2,7 @@ package com.wind.xpatch.proxy;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.Build;
 import android.util.Log;
 
 import com.wind.xposed.entry.SandHookInitialization;
@@ -16,6 +17,8 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 import static com.wind.xposed.entry.XposedModuleEntry.init;
+
+import org.lsposed.hiddenapibypass.HiddenApiBypass;
 
 /**
  * Created by Windysha
@@ -35,7 +38,10 @@ public class XpatchProxyApplication extends Application {
 
     static {
 
-        VMRuntime.setHiddenApiExemptions(new String[]{"L"});
+//        VMRuntime.setHiddenApiExemptions(new String[]{"L"});
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            HiddenApiBypass.addHiddenApiExemptions("");
+        }
 
         Context context = XpatchUtils.createAppContext();
 

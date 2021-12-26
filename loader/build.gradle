@@ -73,5 +73,5 @@ task "copyLoaderFiles"() {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
     implementation 'com.jakewharton.android.repackaged:dalvik-dx:9.0.0_r3'
-    implementation 'me.weishu:free_reflection:3.0.1'
+    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:3.0'
 }
