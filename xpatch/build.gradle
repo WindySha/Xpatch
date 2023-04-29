@@ -10,7 +10,7 @@ android {
     defaultConfig {
         minSdk 14
         targetSdk 30
-        version 4.3
+        version 5.2
 
         consumerProguardFiles "consumer-rules.pro"
         externalNativeBuild {
