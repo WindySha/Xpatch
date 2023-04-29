@@ -5,6 +5,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Build;
+import android.util.Log;
 
 // import com.lody.whale.WhaleRuntime;
 import com.wind.xposed.entry.XposedModuleEntry;
@@ -146,32 +147,44 @@ public class PackageSignatureHooker implements IXposedHookLoadPackage {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             if ("getPackageInfo".equals(method.getName())) {
-                if (args[0] != null && args[0] instanceof String) {
-                    String packageName = (String) args[0];
-                    if (!packageName.equals(currentPackageName)) {
-                        return method.invoke(pmBase, args);
-                    }
-                }
-
-                Integer flag = (Integer) args[1];
-                if (PackageManager.GET_SIGNATURES == flag) {
-                    PackageInfo packageInfo = (PackageInfo) method.invoke(pmBase, args);
-
-                    //  先获取这个方法返回的结果
-                    if (packageInfo.signatures != null && packageInfo.signatures.length > 0) {
-                        // 替换结果里的签名信息
-                        packageInfo.signatures[0] = new Signature(originalSignature);
-                    }
-                    return packageInfo;
-                } else if (Build.VERSION.SDK_INT >= 28 && PackageManager.GET_SIGNING_CERTIFICATES == flag) {
-                    PackageInfo packageInfo = (PackageInfo) method.invoke(pmBase, args);
-                    if (packageInfo.signingInfo != null) {
-                        Signature[] signaturesArray = packageInfo.signingInfo.getApkContentsSigners();
-                        if (signaturesArray != null && signaturesArray.length > 0) {
-                            signaturesArray[0] = new Signature(originalSignature);
+                try {
+                    if (args[0] != null && args[0] instanceof String) {
+                        String packageName = (String) args[0];
+                        if (!packageName.equals(currentPackageName)) {
+                            return method.invoke(pmBase, args);
                         }
                     }
-                    return packageInfo;
+
+                    int flag = 0;
+                    if (args[1] instanceof Long) {
+                        flag = ((Long) args[1]).intValue();
+                    } else if (args[1] instanceof Integer) {
+                        flag = ((Integer) args[1]);
+                    } else {
+                        flag = (int) args[1];
+                    }
+                    if (PackageManager.GET_SIGNATURES == flag) {
+                        PackageInfo packageInfo = (PackageInfo) method.invoke(pmBase, args);
+
+                        //  先获取这个方法返回的结果
+                        if (packageInfo.signatures != null && packageInfo.signatures.length > 0) {
+                            // 替换结果里的签名信息
+                            packageInfo.signatures[0] = new Signature(originalSignature);
+                        }
+                        return packageInfo;
+                    } else if (Build.VERSION.SDK_INT >= 28 && PackageManager.GET_SIGNING_CERTIFICATES == flag) {
+                        PackageInfo packageInfo = (PackageInfo) method.invoke(pmBase, args);
+                        if (packageInfo.signingInfo != null) {
+                            Signature[] signaturesArray = packageInfo.signingInfo.getApkContentsSigners();
+                            if (signaturesArray != null && signaturesArray.length > 0) {
+                                signaturesArray[0] = new Signature(originalSignature);
+                            }
+                        }
+                        return packageInfo;
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("PackageSignatureHooker", " invoke PackageManager getPackageInfo failed !!", e);
+                    e.printStackTrace();
                 }
             }
             return method.invoke(pmBase, args);
