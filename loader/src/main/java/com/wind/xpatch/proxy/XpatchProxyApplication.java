@@ -246,9 +246,9 @@ public class XpatchProxyApplication extends Application {
         if (args == null || args.length == 0) {
             return;
         }
-        for (Object para : args) {
-            if (para instanceof XpatchProxyApplication) {
-                para = sOriginalApplication;
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof XpatchProxyApplication) {
+                args[i] = sOriginalApplication;
             }
         }
     }
