@@ -53,6 +53,12 @@ public class ManifestParser {
                         if ("application".equals(name)) {
                             if ("name".equals(attrName) || attrNameRes == 0x01010003) {
                                 applicationName = parser.getAttributeValue(i);
+                                // found is android:name=".MyApp" this will crash if not replaced
+								if (applicationName.startsWith(".")) {
+								    System.out.println(" application name is: " + applicationName);
+									applicationName = packageName + applicationName;
+									System.out.println(" replacing application name: " + applicationName);
+								}
                             }
                         }
 
