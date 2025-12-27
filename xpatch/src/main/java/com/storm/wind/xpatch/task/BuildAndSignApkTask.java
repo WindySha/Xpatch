@@ -172,6 +172,7 @@ public class BuildAndSignApkTask implements Runnable {
         long time = System.currentTimeMillis();
 
         String os = System.getProperty("os.name");
+        String arch = System.getProperty("os.arch");
         
         String zipalignAssetPath = arch.contains("aarch64") ? "assets/zipalign_arm64" : "assets/zipalign_arm";
 
